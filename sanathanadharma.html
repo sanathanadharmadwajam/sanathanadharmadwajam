@@ -362,6 +362,8 @@
       };
 
       const addContent = (category, book) => {
+        debugger;
+        insertVedas(newVerse,category,book,newTranslation.English,newTranslation.Other,newImage);
         if (newVerse.trim() && book && data[category]?.books?.[book]) {
           const imageUrl = newImage ? URL.createObjectURL(newImage) : "";
           setData((prev) => ({
@@ -955,6 +957,66 @@
     // console.log('Inserted:', data, 'Error:', error);
   };
 
+  const insertVedas = async (newVerse,category,book,eng_text,other_text,newImage) => {
+      debugger;
+      var publicUrl = "";
+      if (!newImage) {
+        console.error('No image file provided');
+        
+      }
+      else 
+      {
+        publicUrl = await uploadFileToBucket(newImage, book, newImage.name);
+
+        if (!publicUrl) {
+          console.error('Failed to upload file or get public URL');
+          return;
+        } 
+      }
+    const { data, error } = await supabase
+      .from(book)
+      .insert([
+        { verse: newVerse ,english_translation:eng_text,french_translation:other_text,filepath: publicUrl}
+      ]);
+      if (error) {
+        console.error('Insert error:', error);
+      } else {
+        console.log('Inserted:', data);
+      }
+    // console.log('Inserted:', data, 'Error:', error);
+  };
+
+  async function uploadFileToBucket(file, folderName, fileName, bucketName = 'sanathanadharma') {
+  const filePath = `${folderName}/${fileName}`;
+
+  const { error: uploadError } = await supabase
+    .storage
+    .from(bucketName)
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (uploadError) {
+    console.error('File upload failed:', uploadError.message);
+    return null;
+  }
+
+  // Get public URL
+  const { data: publicUrlData, error: urlError } = supabase
+    .storage
+    .from(bucketName)
+    .getPublicUrl(filePath);
+
+  if (urlError) {
+    console.error('Failed to get public URL:', urlError.message);
+    return null;
+  }
+
+  return publicUrlData.publicUrl;
+}
+
+  /*Endf of API methods to the supabase*/
     const root = ReactDOM.createRoot(document.getElementById("root"));
     root.render(<App />);
   </script>
